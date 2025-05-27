@@ -1,6 +1,6 @@
 public class MyHashMap<K, V> {
 
-        private static class Node<K, V> {
+    private static class Node<K, V> {
         final K key;
         V value;
         Node<K, V> next;
@@ -13,18 +13,30 @@ public class MyHashMap<K, V> {
     }
 
     private static final int DEFAULT_CAPACITY = 16;
+    private static final float LOAD_FACTOR = 0.75f;
+
     private Node<K, V>[] table;
     private int size;
+    private int threshold;
 
     public MyHashMap() {
         table = (Node<K, V>[]) new Node[DEFAULT_CAPACITY];
+        threshold = (int) (DEFAULT_CAPACITY * LOAD_FACTOR);
+    }
+
+    private int index(K key, int length) {
+        return (key == null) ? 0 : (key.hashCode() & (length - 1));
     }
 
     private int index(K key) {
-        return (key == null) ? 0 : (key.hashCode() & (table.length - 1));
+        return index(key, table.length);
     }
 
     public void put(K key, V value) {
+        if (size >= threshold) {
+            resize();
+        }
+
         int index = index(key);
         Node<K, V> current = table[index];
 
@@ -46,6 +58,27 @@ public class MyHashMap<K, V> {
 
         prev.next = new Node<>(key, value, null);
         size++;
+    }
+
+    private void resize() {
+        int newCapacity = table.length * 2;
+        Node<K, V>[] newTable = (Node<K, V>[]) new Node[newCapacity];
+
+        for (Node<K, V> headNode : table) {
+            Node<K, V> current = headNode;
+            while (current != null) {
+                Node<K, V> next = current.next;
+
+                int newIndex = index(current.key, newCapacity);
+                current.next = newTable[newIndex];
+                newTable[newIndex] = current;
+
+                current = next;
+            }
+        }
+
+        table = newTable;
+        threshold = (int) (newCapacity * LOAD_FACTOR);
     }
 
     public V get(K key) {
@@ -70,10 +103,8 @@ public class MyHashMap<K, V> {
         while (current != null) {
             if ((key == null && current.key == null) || (key != null && key.equals(current.key))) {
                 if (prev == null) {
-                    // удаляем первый узел в списке
                     table[index] = current.next;
                 } else {
-                    // удаляем не первый узел
                     prev.next = current.next;
                 }
                 size--;
